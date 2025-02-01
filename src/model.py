@@ -31,6 +31,9 @@ class Data:
         else:
             self.output = np.append(self.output.T, output.T, axis=0).T
 
+        if self.input.shape[1] % 10 == 0:
+            print(self.input.shape[1], "examples")
+
 class Model:
     def __init__(self, 
                  data : Data,
@@ -56,7 +59,9 @@ class Model:
             cur = self.layers[i]
 
             self.weights.append(np.random.randn(cur,pre))
-            self.biases.append(np.random.randn(cur,1))            
+            self.biases.append(np.random.randn(cur,1)) 
+
+        self.iteration = 0           
 
     def forward_propagate(self, input_layer : np.ndarray) -> tuple[list[np.ndarray],list[np.ndarray]]:
         result : np.ndarray = input_layer
@@ -99,6 +104,8 @@ class Model:
             self.weights[i] -= dweights[-i-1] * alpha
             self.biases[i] -= dbiases[-i-1] * alpha
 
+        self.iteration += 1
+
     def predict(self, input_layer : np.ndarray) -> np.ndarray:
         current : np.ndarray = input_layer
 
@@ -110,16 +117,28 @@ class Model:
             else:
                 current = self.activation(current)
 
-        return current.T
+        return current
+    
+    def evaluate(self):
+        print(f"Iteration {self.iteration}")
 
-    def train(self, alpha=0.05):
+        predictions = self.predict(self.data.input)
+        self.accuracy = np.sum(predictions == self.data.output) / self.data.output.shape[1]
+        print(f"Accuracy: {self.accuracy:%}")
+
+        print()
+
+    def train(self, alpha=0.1):
         layers, activated = self.forward_propagate(self.data.input)
         dweights, dbiases = self.backward_propagate(layers, activated, self.data.output)
         self.update_parameters(dweights, dbiases, alpha)
+
+        if self.iteration % 10 == 0:
+            self.evaluate()
     
 class Aimer(Model):
     def __init__(self,data,resolution):
-        super().__init__(data,np.array([resolution**2, 16, 10, 2]),final_activation=normalize)
+        super().__init__(data,np.array([resolution**2, 32, 20, 16]))
 
 class Selector(Model):
     def __init__(self,data,resolution):

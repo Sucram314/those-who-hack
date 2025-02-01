@@ -2,7 +2,7 @@ import pygame
 import pygame.surfarray
 import numpy as np
 import pickle as pk
-from math import hypot
+from math import hypot, pi, sin, cos
 
 from model import Data, Selector, Aimer
 from player import Player
@@ -89,7 +89,7 @@ class Engine:
         self.current_cooldown = 0
 
         #waves
-        self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=999)]
+        self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=float("inf"))]
         self.cyclenum = 0
 
         #input layer
@@ -159,9 +159,26 @@ class Engine:
         self.selector.data.add_example(self.input_layer, one_hot)
 
         magnitude = hypot(x, y)
-        answer = np.array([[x / magnitude], [y / magnitude]])
+        x /= magnitude
+        y /= magnitude
 
-        self.aimer.data.add_example(self.input_layer, answer)
+        one_hot = np.zeros((16,1))
+
+        maxdot = float("-inf")
+        best = 0
+        for i in range(16):
+            angle = 2 * pi * i / 16
+            ax = cos(angle)
+            ay = sin(angle)
+
+            dot = x * ax + y * ay
+            if dot > maxdot:
+                maxdot = dot
+                best = i
+
+        one_hot[best,0] = 1
+
+        self.aimer.data.add_example(self.input_layer, one_hot)
 
     def auto_add_example(self):
         x = 1
@@ -187,13 +204,9 @@ class Engine:
         self.update_input()
 
         self.weapon_type = np.argmax(self.selector.predict(self.input_layer))
+        prediction = np.argmax(self.aimer.predict(self.input_layer))
 
-        prediction_x, prediction_y = self.aimer.predict(self.input_layer)[0]
-
-        if prediction_x == 0 and prediction_y == 0:
-            self.angle = 0
-        else:
-            self.angle = np.arctan2(prediction_x, prediction_y)
+        self.angle = 2 * pi * prediction / 16
 
     def update(self):
         dt = self.clock.tick(self.fps) / 1000
@@ -338,7 +351,7 @@ class Engine:
             if self.tab == "epoch":
                 pass
             elif self.tab == "training":
-                if keys[pygame.K_SPACE] or left:
+                if keys[pygame.K_EQUALS] or left:
                     #self.add_example(mx, my)
                     self.auto_add_example()
 
@@ -347,7 +360,7 @@ class Engine:
                     if self.cycles[self.cyclenum].repeats < 0:
                         self.cyclenum += 1
 
-                if right:
+                if keys[pygame.K_MINUS] or right:
                     self.train()
 
             elif self.tab == "activation":
