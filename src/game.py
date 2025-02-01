@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 
+from model import Selector, Aimer
 from player import Player
 from camera import Camera
 from bullet import Bullet
@@ -37,12 +38,18 @@ class Engine:
 
         #input layer
         self.input_size = 600
-        self.input_resolution = 30
+        self.input_resolution = 20
         self.input_layer : np.ndarray = np.zeros(self.input_resolution ** 2)
         self.input_surface : pygame.Surface = pygame.surface.Surface((self.input_size,self.input_size))
 
         self.prediction_cooldown = 0
         self.prediction_interval = 0.5
+
+        #models
+
+        self.selector : Selector = Selector(self.input_resolution)
+        self.aimer : Aimer = Aimer(self.input_resolution)
+        self.angle = 0
 
     def game_over(self):
         pass
@@ -54,10 +61,15 @@ class Engine:
             enemy.input(self.player.x, self.player.y, self.input_size, self.input_surface)
 
         downscaled = pygame.transform.smoothscale(self.input_surface, (self.input_resolution, self.input_resolution))
-        self.input_layer = np.array(pygame.surfarray.array2d(downscaled)) / 0xffffff
+        self.input_layer = np.reshape(pygame.surfarray.array2d(downscaled),(self.input_resolution**2,1)) / 0xffffff
 
     def run_prediction(self):
         self.update_input()
+
+        self.weapon_type = np.argmax(self.selector.predict(self.input_layer))
+
+        prediction_x, prediction_y = self.aimer.predict(self.input_layer)[0]
+        self.angle = np.arctan2(prediction_x, prediction_y)
 
     def update(self):
         dt = self.clock.tick(self.fps) / 1000
@@ -89,7 +101,7 @@ class Engine:
         if keys[pygame.K_SPACE] and self.current_cooldown <= 0:
             cur_weapon = self.weapons[self.weapon_type]
             self.current_cooldown = cur_weapon.reload
-            self.bullets.append(cur_weapon.shoot(self.player.x, self.player.y, 0))
+            self.bullets.append(cur_weapon.shoot(self.player.x, self.player.y, self.angle))
             
         for enemy in self.enemies:
             enemy.update(dt, self.player.x, self.player.y)
