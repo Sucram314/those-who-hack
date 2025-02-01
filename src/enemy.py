@@ -38,3 +38,10 @@ class Enemy:
         screen_x, screen_y = camera.to_screen(self.x, self.y)
 
         pygame.draw.circle(screen, (0,255,0), (screen_x, screen_y), self.radius)
+
+    def input(self, x, y, input_size, input_surface):
+        dx = (self.x - x) + input_size / 2
+        dy = (self.y - y) + input_size / 2
+
+        pygame.draw.circle(input_surface, (255,255,255), (dx,dy), self.radius)
+        

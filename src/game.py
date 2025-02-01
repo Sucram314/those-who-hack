@@ -1,4 +1,5 @@
 import pygame
+import numpy as np
 
 from player import Player
 from camera import Camera
@@ -23,20 +24,40 @@ class Engine:
         self.bullets : list[Bullet] = []
         self.particles : list[Particle] = []
 
+        #weapons
         self.weapon_type = 0
         self.weapons = [Weapon(0.5,Bullet(0,0,0,500,10,10,100,10)),
                         Weapon(1,Bullet(0,0,0,2000,5,50,0,0))]
         
         self.current_cooldown = 0
 
+        #waves
         self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=999)]
         self.cyclenum = 0
 
+        #input layer
+        self.input_size = 600
         self.input_resolution = 30
-        self.input = [[0]*self.input_resolution for _ in range(self.input_resolution)]
+        self.input_layer : np.ndarray = np.zeros(self.input_resolution ** 2)
+        self.input_surface : pygame.Surface = pygame.surface.Surface((self.input_size,self.input_size))
+
+        self.prediction_cooldown = 0
+        self.prediction_interval = 0.5
 
     def game_over(self):
         pass
+
+    def update_input(self):
+        self.input_surface.fill((0,0,0))
+
+        for enemy in self.enemies:
+            enemy.input(self.player.x, self.player.y, self.input_size, self.input_surface)
+
+        downscaled = pygame.transform.smoothscale(self.input_surface, (self.input_resolution, self.input_resolution))
+        self.input_layer = np.array(pygame.surfarray.array2d(downscaled)) / 0xffffff
+
+    def run_prediction(self):
+        self.update_input()
 
     def update(self):
         dt = self.clock.tick(self.fps) / 1000
@@ -54,8 +75,6 @@ class Engine:
         yinput = (keys[pygame.K_w] or keys[pygame.K_UP]) - (keys[pygame.K_s] or keys[pygame.K_DOWN])
 
         self.screen.fill((0,0,0))
-
-        #use ai to update weapon_type and shoot direction here
         
         self.player.update(dt,xinput,yinput)
         self.camera.follow(self.player.x, self.player.y)
@@ -156,6 +175,13 @@ class Engine:
 
         if self.player.health <= 0:
             self.game_over()
+
+
+        self.prediction_cooldown -= dt
+
+        if self.prediction_cooldown <= 0:
+            self.prediction_cooldown = self.prediction_interval
+            self.run_prediction()
 
         return False
 
