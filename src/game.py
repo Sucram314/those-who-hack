@@ -1,4 +1,5 @@
 import pygame
+import pygame.surfarray
 import numpy as np
 
 from model import Selector, Aimer
