@@ -1,5 +1,5 @@
 class Camera:
-    def __init__(self,x,y,screen_width,screen_height,follow_rate=0.2):
+    def __init__(self,screen_width,screen_height,x=0,y=0,follow_rate=0.2):
         self.x = x
         self.y = y
 
@@ -7,6 +7,10 @@ class Camera:
         self.screen_height = screen_height
 
         self.follow_rate = follow_rate
+
+    def reset(self):
+        self.x = 0
+        self.y = 0
 
     def follow(self, x, y):
         self.x += (x - self.x) * self.follow_rate

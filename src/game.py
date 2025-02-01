@@ -1,8 +1,10 @@
 import pygame
 import pygame.surfarray
 import numpy as np
+import pickle as pk
+from math import hypot
 
-from model import Selector, Aimer
+from model import Data, Selector, Aimer
 from player import Player
 from camera import Camera
 from bullet import Bullet
@@ -59,7 +61,9 @@ class UI:
 
 class Engine:
     def __init__(self,screen,fps,directory):
+        self.directory = directory
         self.scene = "menu"
+        self.tab = "training"
         self.UI = UI(directory)
 
         self.screen : pygame.Surface = screen
@@ -68,10 +72,10 @@ class Engine:
         self.clock = pygame.time.Clock()
         self.fps = fps
 
-        self.player = Player(0,0)
+        self.player = Player()
         self.angle = 0
 
-        self.camera = Camera(0,0,self.width,self.height)
+        self.camera = Camera(self.width,self.height)
 
         self.enemies : list[Enemy] = []
         self.bullets : list[Bullet] = []
@@ -98,8 +102,42 @@ class Engine:
         self.prediction_interval = 0.5
 
         #models
-        self.selector : Selector = Selector(self.input_resolution)
-        self.aimer : Aimer = Aimer(self.input_resolution)
+        self.selector : Selector = Selector(Data(), self.input_resolution)
+        self.aimer : Aimer = Aimer(Data(), self.input_resolution)
+
+    def save(self):
+        with open(f"{self.directory}\\data\\selector.pk","wb") as f:
+            pk.dump(self.selector, f)
+
+        with open(f"{self.directory}\\data\\aimer.pk","wb") as f:
+            pk.dump(self.aimer, f)
+
+    def load(self):
+        try:
+            with open(f"{self.directory}\\data\\selector.pk","rb") as f:
+                self.selector = pk.load(f)
+
+            with open(f"{self.directory}\\data\\aimer.pk","rb") as f:
+                self.aimer = pk.load(f)
+        except:
+            pass
+
+    def reset(self):
+        self.player.reset()
+        self.angle = 0
+
+        self.camera.reset()
+
+        self.enemies : list[Enemy] = []
+        self.bullets : list[Bullet] = []
+        self.particles : list[Particle] = []
+
+        self.weapon_type = 0
+        self.current_cooldown = 0
+
+        self.cyclenum = 0
+
+        self.prediction_cooldown = 0
 
     def game_over(self):
         pass
@@ -113,13 +151,49 @@ class Engine:
         downscaled = pygame.transform.smoothscale(self.input_surface, (self.input_resolution, self.input_resolution))
         self.input_layer = np.reshape(pygame.surfarray.array2d(downscaled),(self.input_resolution**2,1)) / 0xffffff
 
+    def add_example(self, x, y):
+        self.update_input()
+
+        one_hot = np.zeros((len(self.weapons),1))
+        one_hot[self.weapon_type,0] = 1
+        self.selector.data.add_example(self.input_layer, one_hot)
+
+        magnitude = hypot(x, y)
+        answer = np.array([[x / magnitude], [y / magnitude]])
+
+        self.aimer.data.add_example(self.input_layer, answer)
+
+    def auto_add_example(self):
+        x = 1
+        y = 0
+        minsqrdist = float("inf")
+
+        for enemy in self.enemies:
+            sqrdist = enemy.x ** 2 + enemy.y ** 2
+
+            if sqrdist < minsqrdist:
+                minsqrdist = sqrdist
+                x = enemy.x
+                y = enemy.y
+
+        self.add_example(x,y)
+
+    def train(self):
+        for _ in range(100):
+            self.selector.train()
+            self.aimer.train()
+    
     def run_prediction(self):
         self.update_input()
 
         self.weapon_type = np.argmax(self.selector.predict(self.input_layer))
 
         prediction_x, prediction_y = self.aimer.predict(self.input_layer)[0]
-        self.angle = np.arctan2(prediction_x, prediction_y)
+
+        if prediction_x == 0 and prediction_y == 0:
+            self.angle = 0
+        else:
+            self.angle = np.arctan2(prediction_x, prediction_y)
 
     def update(self):
         dt = self.clock.tick(self.fps) / 1000
@@ -133,6 +207,7 @@ class Engine:
                 return True
             
             self.scene = "menu"
+            self.reset()
 
         xinput = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
         yinput = (keys[pygame.K_w] or keys[pygame.K_UP]) - (keys[pygame.K_s] or keys[pygame.K_DOWN])
@@ -145,9 +220,12 @@ class Engine:
         if self.scene == "menu":
             if self.UI.play_button.update(self.width, self.height, mx, my, left, middle, right):
                 self.scene = "game"
+                self.UI.play_button.upscale = 1
             
             if self.UI.shopping_cart.update(self.width, self.height, mx, my, left, middle, right):
                 self.scene = "shop"
+                self.tab = "training"
+                self.UI.shopping_cart.upscale = 1
 
         elif self.scene == "game":
             self.player.update(dt,xinput,yinput)
@@ -250,7 +328,6 @@ class Engine:
             if self.player.health <= 0:
                 self.game_over()
 
-
             self.prediction_cooldown -= dt
 
             if self.prediction_cooldown <= 0:
@@ -258,7 +335,23 @@ class Engine:
                 self.run_prediction()
         
         elif self.scene == "shop":
-            pass
+            if self.tab == "epoch":
+                pass
+            elif self.tab == "training":
+                if keys[pygame.K_SPACE] or left:
+                    #self.add_example(mx, my)
+                    self.auto_add_example()
+
+                    self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 600)]
+
+                    if self.cycles[self.cyclenum].repeats < 0:
+                        self.cyclenum += 1
+
+                if right:
+                    self.train()
+
+            elif self.tab == "activation":
+                pass
         
         return False
 
@@ -281,4 +374,13 @@ class Engine:
             self.player.draw(self.screen, self.camera)
 
         elif self.scene == "shop":
-            pass
+            if self.tab == "epoch":
+                pass
+            elif self.tab == "training":
+                for enemy in self.enemies:
+                    enemy.draw(self.screen, self.camera)
+
+                self.player.draw(self.screen, self.camera)
+
+            elif self.tab == "activation":
+                pass

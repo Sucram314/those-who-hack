@@ -2,9 +2,10 @@ import pygame
 from camera import Camera
 
 class Player:
-    def __init__(self, x, y, health=100, radius=30, acceleration=40, friction=0.9):
+    def __init__(self, x=0, y=0, health=100, radius=30, acceleration=40, friction=0.9):
         self.x = x
         self.y = y
+        self.full_health = health
         self.health = health
         self.radius = radius
 
@@ -13,6 +14,14 @@ class Player:
 
         self.acceleration = acceleration
         self.friction = friction
+
+    def reset(self):
+        self.x = 0
+        self.y = 0
+        self.health = self.full_health
+        
+        self.xvel = 0
+        self.yvel = 0
 
     def move(self, dt, xinput, yinput):
         self.xvel += xinput * self.acceleration

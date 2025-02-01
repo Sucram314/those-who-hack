@@ -9,9 +9,11 @@ FPS = 60
 DIRECTORY = os.getcwd() + "\\src"
 
 engine = Engine(SCREEN, FPS, DIRECTORY)
+engine.load()
 
 while True:
     if engine.update():
+        engine.save()
         pygame.quit()
         break
     
