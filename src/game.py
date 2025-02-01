@@ -71,6 +71,40 @@ class Engine:
                     self.player.health -= enemy.damage
                     enemy.delta_time = 0
 
+                magnitude = sqrdist ** 0.5
+                normalized_x = dx / magnitude
+                normalized_y = dy / magnitude
+
+                depenetration =  magnitude - enemy.radius - self.player.radius
+
+                enemy.x += normalized_x * depenetration
+                enemy.y += normalized_y * depenetration
+
+        for i in range(len(self.enemies)):
+            enemy1 = self.enemies[i]
+
+            for j in range(i):
+                enemy2 = self.enemies[j]
+
+                dx = enemy1.x - enemy2.x
+                dy = enemy1.y - enemy2.y
+                
+                sqrdist = dx ** 2 + dy ** 2
+
+                if sqrdist <= (enemy1.radius + enemy2.radius) ** 2:
+                    magnitude = sqrdist ** 0.5
+                    normalized_x = dx / magnitude
+                    normalized_y = dy / magnitude
+
+                    depenetration =  magnitude - enemy1.radius - enemy2.radius
+                    ratio = enemy2.radius ** 2 / (enemy1.radius ** 2 + enemy2.radius ** 2)
+
+                    enemy1.x -= normalized_x * depenetration * ratio
+                    enemy1.y -= normalized_y * depenetration * ratio
+
+                    enemy2.x += normalized_x * depenetration * (1 - ratio)
+                    enemy2.y += normalized_y * depenetration * (1 - ratio)
+
         area_damages : list[Bullet] = []
         
         for bullet in self.bullets:
