@@ -43,4 +43,4 @@ class Bullet:
     def draw(self, screen : pygame.Surface, camera : Camera):
         screen_x, screen_y = camera.to_screen(self.x, self.y)
 
-        pygame.draw.aacircle(screen, (255,0,0), (screen_x, screen_y), self.radius)
+        pygame.draw.circle(screen, (255,0,0), (screen_x, screen_y), self.radius)

@@ -40,8 +40,7 @@ class Engine:
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_ESCAPE]:
-            pygame.quit()
-            sys.exit()
+            return True
 
         xinput = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
         yinput = (keys[pygame.K_w] or keys[pygame.K_UP]) - (keys[pygame.K_s] or keys[pygame.K_DOWN])
@@ -152,6 +151,8 @@ class Engine:
         if self.player.health <= 0:
             self.game_over()
 
+        return False
+
     def draw(self):
         for particle in self.particles:
             particle.draw(self.screen, self.camera)
@@ -163,5 +164,3 @@ class Engine:
             bullet.draw(self.screen, self.camera)
 
         self.player.draw(self.screen, self.camera)
-
-        pygame.display.flip()

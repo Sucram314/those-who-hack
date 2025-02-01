@@ -1,3 +1,4 @@
+import asyncio
 import pygame
 from game import Engine
 
@@ -6,6 +7,14 @@ FPS = 60
 
 engine = Engine(SCREEN, FPS)
 
-while True:
-    engine.update()
-    engine.draw()
+async def main():
+    while True:
+        if engine.update():
+            return
+        
+        engine.draw()
+
+        pygame.display.update()
+        await asyncio.sleep(0)
+
+asyncio.run(main())
