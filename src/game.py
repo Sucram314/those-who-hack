@@ -6,6 +6,7 @@ from camera import Camera
 from bullet import Bullet
 from weapon import Weapon
 from enemy import Enemy
+from cycle import Cycle
 from particle import Particle
 
 class Engine:
@@ -19,12 +20,15 @@ class Engine:
         self.player = Player(0,0)
         self.camera = Camera(0,0,self.width,self.height)
 
-        self.enemies : list[Enemy] = [Enemy(500,500,30,100,100,10),Enemy(500,600,30,100,100,10)]
+        self.enemies : list[Enemy] = []
         self.bullets : list[Bullet] = []
         self.particles : list[Particle] = []
 
         self.weapon_type = 0
-        self.weapons = [Weapon(0.5,500,10,10,100,10)]
+        self.weapons = [Weapon(0.5,Bullet(0,0,0,500,10,10,100,10))]
+
+        self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=999)]
+        self.cyclenum = 0
 
     def game_over(self):
         pass
@@ -49,11 +53,16 @@ class Engine:
         self.player.update(dt,xinput,yinput)
         self.camera.follow(self.player.x, self.player.y)
 
+        self.enemies.extend(self.cycles[self.cyclenum].update(dt, self.player.x, self.player.y))
+
+        if self.cycles[self.cyclenum].repeats < 0:
+            self.cyclenum += 1
+
         for weapon in self.weapons:
             weapon.update(dt)
 
         if keys[pygame.K_SPACE]:
-            res = self.weapons[self.weapon_type].shoot(self.player.x, self.player.y)
+            res = self.weapons[self.weapon_type].shoot(self.player.x, self.player.y, 0)
             
             if res is not None:
                 self.bullets.append(res)
@@ -156,16 +165,3 @@ class Engine:
         self.player.draw(self.screen, self.camera)
 
         pygame.display.flip()
-
-
-if __name__ == "__main__":
-    SCREEN = pygame.display.set_mode(flags=pygame.FULLSCREEN)
-    FPS = 60
-
-    engine = Engine(SCREEN, FPS)
-
-    while True:
-        engine.update()
-        engine.draw()
-
-

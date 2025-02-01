@@ -15,6 +15,9 @@ class Enemy:
 
         self.delta_time = attack_cooldown
 
+    def instantiate(self,x,y):
+        return Enemy(x,y,self.radius,self.health,self.speed,self.damage,self.attack_cooldown)
+
     def move(self,dt,x,y):
         dx = x - self.x
         dy = y - self.y
