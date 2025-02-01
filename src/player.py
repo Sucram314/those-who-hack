@@ -2,9 +2,10 @@ import pygame
 from camera import Camera
 
 class Player:
-    def __init__(self, x, y, radius=30, acceleration=40, friction=0.9):
+    def __init__(self, x, y, health=100, radius=30, acceleration=40, friction=0.9):
         self.x = x
         self.y = y
+        self.health = health
         self.radius = radius
 
         self.xvel = 0
