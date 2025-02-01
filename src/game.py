@@ -5,6 +5,7 @@ from player import Player
 from camera import Camera
 from bullet import Bullet
 from weapon import Weapon
+from enemy import Enemy
 
 class Engine:
     def __init__(self,screen,fps):
@@ -17,7 +18,7 @@ class Engine:
         self.player = Player(0,0)
         self.camera = Camera(0,0,self.width,self.height)
 
-        self.enemies = []
+        self.enemies = [Enemy(500,500,30,100,100)]
         self.bullets : list[Bullet] = []
 
         self.weapon_type = 0
@@ -35,27 +36,55 @@ class Engine:
 
         xinput = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
         yinput = (keys[pygame.K_w] or keys[pygame.K_UP]) - (keys[pygame.K_s] or keys[pygame.K_DOWN])
+
+        self.screen.fill((0,0,0))
+
+        #use ai to update weapon_type and shoot direction here
         
+
+        #update
+
         self.player.update(dt,xinput,yinput)
         self.camera.follow(self.player.x, self.player.y)
-
-        self.bullets = [bullet for bullet in self.bullets if bullet.update(dt,self.player.x,self.player.y)]
 
         for weapon in self.weapons:
             weapon.update(dt)
 
         if keys[pygame.K_SPACE]:
             res = self.weapons[self.weapon_type].shoot(self.player.x, self.player.y)
+            
             if res is not None:
                 self.bullets.append(res)
 
+        for enemy in self.enemies:
+            enemy.update(dt, self.player.x, self.player.y)
+        
+        for bullet in self.bullets:
+            bullet.update(dt,self.player.x,self.player.y)
+            
+            for enemy in self.enemies:
+                dx = enemy.x - bullet.x
+                dy = enemy.y - bullet.y
 
-        self.screen.fill((0,0,0))
+                sqrdist = dx ** 2 + dy ** 2
+
+                if sqrdist <= (bullet.radius + enemy.radius) ** 2:
+                    enemy.health -= bullet.damage
+                    bullet.despawn = True
+                    break
+
+        self.enemies = [enemy for enemy in self.enemies if enemy.health > 0]
+        self.bullets = [bullet for bullet in self.bullets if not bullet.despawn]
+
+        #draw
 
         self.player.draw(self.screen, self.camera)
 
         for bullet in self.bullets: 
             bullet.draw(self.screen, self.camera)
+
+        for enemy in self.enemies:
+            enemy.draw(self.screen, self.camera)
 
         pygame.display.flip()
 

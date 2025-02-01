@@ -1,2 +1,4 @@
 plan:
 
+rpg survival game where you train ur ai to aim better based on your surroundings
+

@@ -2,9 +2,10 @@ import pygame
 from camera import Camera
 
 class Player:
-    def __init__(self, x, y, acceleration=40, friction=0.9):
+    def __init__(self, x, y, radius=30, acceleration=40, friction=0.9):
         self.x = x
         self.y = y
+        self.radius = radius
 
         self.xvel = 0
         self.yvel = 0
@@ -28,4 +29,4 @@ class Player:
     def draw(self, screen : pygame.Surface, camera : Camera):
         screen_x, screen_y = camera.to_screen(self.x, self.y)
 
-        pygame.draw.rect(screen, (255,255,255), (screen_x - 25, screen_y - 25, 50, 50))
+        pygame.draw.aacircle(screen, (255,255,255), (screen_x,screen_y), self.radius)
