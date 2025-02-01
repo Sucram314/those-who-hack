@@ -1,5 +1,4 @@
 import pygame
-import sys
 
 from player import Player
 from camera import Camera
@@ -25,10 +24,16 @@ class Engine:
         self.particles : list[Particle] = []
 
         self.weapon_type = 0
-        self.weapons = [Weapon(0.5,Bullet(0,0,0,500,10,10,100,10))]
+        self.weapons = [Weapon(0.5,Bullet(0,0,0,500,10,10,100,10)),
+                        Weapon(1,Bullet(0,0,0,2000,5,50,0,0))]
+        
+        self.current_cooldown = 0
 
         self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=999)]
         self.cyclenum = 0
+
+        self.input_resolution = 30
+        self.input = [[0]*self.input_resolution for _ in range(self.input_resolution)]
 
     def game_over(self):
         pass
@@ -41,6 +46,9 @@ class Engine:
 
         if keys[pygame.K_ESCAPE]:
             return True
+        
+        if keys[pygame.K_1]: self.weapon_type = 0
+        if keys[pygame.K_2]: self.weapon_type = 1
 
         xinput = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
         yinput = (keys[pygame.K_w] or keys[pygame.K_UP]) - (keys[pygame.K_s] or keys[pygame.K_DOWN])
@@ -57,15 +65,13 @@ class Engine:
         if self.cycles[self.cyclenum].repeats < 0:
             self.cyclenum += 1
 
-        for weapon in self.weapons:
-            weapon.update(dt)
+        self.current_cooldown -= dt
 
-        if keys[pygame.K_SPACE]:
-            res = self.weapons[self.weapon_type].shoot(self.player.x, self.player.y, 0)
+        if keys[pygame.K_SPACE] and self.current_cooldown <= 0:
+            cur_weapon = self.weapons[self.weapon_type]
+            self.current_cooldown = cur_weapon.reload
+            self.bullets.append(cur_weapon.shoot(self.player.x, self.player.y, 0))
             
-            if res is not None:
-                self.bullets.append(res)
-
         for enemy in self.enemies:
             enemy.update(dt, self.player.x, self.player.y)
 
