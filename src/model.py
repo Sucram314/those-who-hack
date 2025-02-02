@@ -67,7 +67,8 @@ class Model:
             self.weights.append(np.random.randn(cur,pre))
             self.biases.append(np.zeros((cur,1)))
 
-        self.iteration = 0           
+        self.iteration = 0    
+        self.accuracy = 0       
 
     def forward_propagate(self, input_layer : np.ndarray) -> tuple[list[np.ndarray],list[np.ndarray]]:
         result : np.ndarray = input_layer

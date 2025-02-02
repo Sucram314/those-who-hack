@@ -13,6 +13,9 @@ from enemy import Enemy
 from cycle import Cycle
 from particle import Particle
 
+def sigmoid(n):
+    return 1/(1+np.exp(-n))
+
 class Asset:
     def __init__(self, texture : pygame.Surface, x, y):
         self.texture = texture.convert()
@@ -55,9 +58,14 @@ class UI:
         self.title = Asset(self.font[100].render("neuroAImers",0,(255,255,255)), 0, -200)
         self.shopping_cart = Button(self.load_to_scale("textures\\shopping_cart.png", 300, 300), 200, 100)
         self.play_button =  Button(self.load_to_scale("textures\\play.png", 300, 300), -200, 100)
+        self.upgrade = Button(self.load_to_scale("textures\\upgrade.png", 600, 600), 0, 0)
 
     def load_to_scale(self, relative_path, w, h):
         return pygame.transform.scale(pygame.image.load(f"{self.directory}\\{relative_path}"),(w,h))
+
+NORMAL_ZOMBIE = Enemy(0,0,30,100,150,10,10,(0,200,0))
+FAST_ZOMBIE = Enemy(0,0,20,100,200,10,15,(0,255,0))
+BIG_ZOMBIE = Enemy(0,0,40,200,100,20,15,(0,255,0))
 
 class Engine:
     def __init__(self,screen,fps,directory):
@@ -73,6 +81,8 @@ class Engine:
         self.fps = fps
 
         self.player = Player()
+        self.coins = 0
+        self.tokens = 0
         self.angle = 0
 
         self.camera = Camera(self.width,self.height)
@@ -90,9 +100,11 @@ class Engine:
 
         #waves
         self.cycles : list[Cycle] = [
-            Cycle([Enemy(0,0,30,float("inf"),0,0)]*5,repeats=float("inf")),
-            Cycle([Enemy(0,0,30,100,100,10)]*3),
-            Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=float("inf"))
+            #Cycle([Enemy(0,0,30,float("inf"),0,0)]*5,repeats=float("inf")),
+            Cycle([NORMAL_ZOMBIE]*3),
+            Cycle([FAST_ZOMBIE]*5),
+            Cycle([BIG_ZOMBIE]*3),
+            Cycle([NORMAL_ZOMBIE, FAST_ZOMBIE, BIG_ZOMBIE]*2),
         ]
 
         self.cyclenum = 0
@@ -111,6 +123,9 @@ class Engine:
         self.aimer : Aimer = Aimer(Data(), self.input_resolution)
 
     def save(self):
+        with open(f"{self.directory}\\data\\playerdata.pk","wb") as f:
+            pk.dump((self.coins,self.tokens), f)
+
         with open(f"{self.directory}\\data\\selector.pk","wb") as f:
             pk.dump(self.selector, f)
 
@@ -119,6 +134,9 @@ class Engine:
 
     def load(self):
         try:
+            with open(f"{self.directory}\\data\\playerdata.pk","rb") as f:
+                self.coins, self.tokens = pk.load(f)
+
             with open(f"{self.directory}\\data\\selector.pk","rb") as f:
                 self.selector = pk.load(f)
 
@@ -252,6 +270,8 @@ class Engine:
 
             if self.cycles[self.cyclenum].repeats < 0:
                 self.cyclenum += 1
+                if self.cyclenum == len(self.cycles):
+                    self.cyclenum -= 1
 
             self.current_cooldown -= dt
 
@@ -338,6 +358,10 @@ class Engine:
                     if sqrdist <= (bullet.area_radius + enemy.radius) ** 2:
                         enemy.health -= bullet.area_damage
 
+            for enemy in self.enemies:
+                if enemy.health <= 0:
+                    self.coins += enemy.value
+
             self.enemies = [enemy for enemy in self.enemies if enemy.health > 0]
             self.bullets = [bullet for bullet in self.bullets if not bullet.despawn]
             self.particles = [particle for particle in self.particles if particle.update(dt)]
@@ -351,12 +375,25 @@ class Engine:
                 self.prediction_cooldown = self.prediction_interval
                 self.run_prediction()
 
-            self.screen.blit(self.input_surface,((self.width - self.input_size)/2, (self.height - self.input_size)/2))
+            #self.screen.blit(self.input_surface,((self.width - self.input_size)/2, (self.height - self.input_size)/2))
         
         elif self.scene == "shop":
+            if self.tokens > 0:
+                self.train()
+                self.tokens -= 1
+                
             if self.tab == "epoch":
-                pass
+                if curkeys[pygame.K_TAB]:
+                    self.tab = "training"
+
+                if self.UI.upgrade.update(self.width, self.height, mx, my, left, middle, right):
+                    self.tokens += self.coins
+                    self.coins = 0
+                
             elif self.tab == "training":
+                if curkeys[pygame.K_TAB]:
+                    self.tab = "visual"
+
                 if keys[pygame.K_EQUALS] or left:
                     #self.add_example(mx, my)
                     self.auto_add_example()
@@ -365,12 +402,15 @@ class Engine:
 
                     if self.cycles[self.cyclenum].repeats < 0:
                         self.cyclenum += 1
+                        if self.cyclenum == len(self.cycles):
+                            self.cyclenum = 0
 
                 if 1 or right:
                     self.train()
 
-            elif self.tab == "activation":
-                pass
+            elif self.tab == "visual":
+                if keys[pygame.K_TAB]:
+                    self.tab = "epoch"
         
         return False
 
@@ -392,14 +432,86 @@ class Engine:
 
             self.player.draw(self.screen, self.camera)
 
+            coin_text = self.UI.font[32].render(f"Coins: {self.coins}",0,(255,255,255))
+            w, h = coin_text.get_size()
+            self.screen.blit(coin_text, (self.width-w - 50, self.height-h - 50))
+
         elif self.scene == "shop":
             if self.tab == "epoch":
                 pass
+
             elif self.tab == "training":
                 for enemy in self.enemies:
                     enemy.draw(self.screen, self.camera)
 
                 self.player.draw(self.screen, self.camera)
 
-            elif self.tab == "activation":
-                pass
+            elif self.tab == "visual":
+
+                #code by henry tian
+                b1, b2, b3 = self.aimer.biases
+                W1, W2, W3 = self.aimer.weights
+                w = self.width
+                h = self.height
+
+                rad = 10
+                dist = 5
+                distbetweencols = 300
+
+                numvis = 16
+                distbetweenX = 50
+
+                for i in range(b1.shape[0]):
+                    x = w/2-0.5*distbetweencols
+                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist)
+                    for j in range(numvis):
+                        x2 = w/2-1.5*distbetweencols
+                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist)
+                        pygame.draw.aaline(self.screen, (255-255*sigmoid(W1[i,j]),0,255*sigmoid(W1[i,j])), (x,y), (x2,y2))
+                    for j in range(numvis,2*numvis):
+                        x2 = w/2-1.5*distbetweencols
+                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist)+distbetweenX
+                        pygame.draw.aaline(self.screen, (255-255*sigmoid(W1[i,j]),0,255*sigmoid(W1[i,j])), (x,y), (x2,y2))
+                for i in range(b2.shape[0]):
+                    x = w/2+0.5*distbetweencols
+                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist)
+                    for j in range(len(W2[i])):
+                        x2 = w/2-0.5*distbetweencols
+                        y2 = (h-((2*rad+dist)*b1.shape[0]-dist))/2+j*(rad*2+dist)
+                        pygame.draw.aaline(self.screen, (255-255*sigmoid(W2[i,j]),0,255*sigmoid(W2[i,j])), (x,y), (x2,y2))
+                for i in range(b3.shape[0]):
+                    x = w/2+1.5*distbetweencols
+                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist)
+                    for j in range(len(W3[i])):
+                        x2 = w/2+0.5*distbetweencols
+                        y2 = (h-((2*rad+dist)*b2.shape[0]-dist))/2+j*(rad*2+dist)
+                        pygame.draw.aaline(self.screen, (255-255*sigmoid(W2[i,j]),0,255*sigmoid(W2[i,j])), (x,y), (x2,y2))
+
+                for i in range(numvis):
+                    x = w/2-1.5*distbetweencols
+                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist)
+                    pygame.draw.aacircle(self.screen, (255,255,255), (x,y), rad)
+                for i in range(numvis,numvis*2):
+                    x = w/2-1.5*distbetweencols
+                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist)+distbetweenX
+                    pygame.draw.aacircle(self.screen, (255,255,255), (x,y), rad)
+                for i in range(b1.shape[0]):
+                    x = w/2-0.5*distbetweencols
+                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist)
+                    pygame.draw.aacircle(self.screen, (255-255*sigmoid(b1[i,0]),0,255*sigmoid(b1[i,0])), (x, y), rad)
+                for i in range(b2.shape[0]):
+                    x = w/2+0.5*distbetweencols
+                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist)
+                    pygame.draw.aacircle(self.screen, (255-255*sigmoid(b2[i,0]),0,255*sigmoid(b2[i,0])), (x, y), rad)
+                for i in range(b3.shape[0]):
+                    x = w/2+1.5*distbetweencols
+                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist)
+                    pygame.draw.aacircle(self.screen, (255-255*sigmoid(b3[i,0]),0,255*sigmoid(b3[i,0])), (x, y), rad)
+
+                accuracy_text = self.UI.font[32].render(f"Accuracy: {self.aimer.accuracy:.2%}",0,(255,255,255))
+                w, h = accuracy_text.get_size()
+                self.screen.blit(accuracy_text, (self.width-w - 50, self.height-h - 50))
+
+                iteration_text = self.UI.font[32].render(f"Iteration: {self.aimer.iteration}",0,(255,255,255))
+                w2, h2 = iteration_text.get_size()
+                self.screen.blit(iteration_text, (self.width-w2 - 50, self.height-h-h2 - 50))

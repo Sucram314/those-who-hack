@@ -6,10 +6,11 @@ from PIL import Image
 with open(r"C:\Users\marcu\OneDrive\Documents\GitHub\those-who-hack\src\data\aimer.pk","rb") as f:
     obj : Aimer = pk.load(f)
 
-num = 1000
+num = -1
 
 a = obj.data.input.T[num]
 a = np.reshape(a,(20,20))
+print(a.tolist())
 
 img = Image.fromarray(np.uint8(a * 255), 'L')
 img.show()

@@ -3,7 +3,7 @@ from camera import Camera
 from math import hypot
 
 class Enemy:
-    def __init__(self,x,y,radius,health,speed,damage,attack_cooldown=1):
+    def __init__(self,x,y,radius,health,speed,damage,value,colour=(0,255,0),attack_cooldown=1):
         self.x = x
         self.y = y
         self.radius = radius
@@ -11,12 +11,15 @@ class Enemy:
         self.health = health
         self.speed = speed
         self.damage = damage
+        self.value = value
+
+        self.colour = colour
         self.attack_cooldown = attack_cooldown
 
         self.delta_time = attack_cooldown
 
     def instantiate(self,x,y):
-        return Enemy(x,y,self.radius,self.health,self.speed,self.damage,self.attack_cooldown)
+        return Enemy(x,y,self.radius,self.health,self.speed,self.damage,self.value,self.colour,self.attack_cooldown)
 
     def move(self,dt,x,y):
         dx = x - self.x
@@ -37,11 +40,11 @@ class Enemy:
     def draw(self, screen : pygame.Surface, camera : Camera):
         screen_x, screen_y = camera.to_screen(self.x, self.y)
 
-        pygame.draw.circle(screen, (0,255,0), (screen_x, screen_y), self.radius)
+        pygame.draw.aacircle(screen, self.colour, (screen_x, screen_y), self.radius)
 
     def input(self, x, y, input_size, input_surface):
         dx = (self.x - x) + input_size / 2
         dy = (y - self.y) + input_size / 2
 
-        pygame.draw.circle(input_surface, (255,255,255), (dx,dy), self.radius)
+        pygame.draw.aacircle(input_surface, (255,255,255), (dx,dy), self.radius)
         
