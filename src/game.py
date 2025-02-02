@@ -203,8 +203,8 @@ class Engine:
     def run_prediction(self):
         self.update_input()
 
-        self.weapon_type = self.selector.predict(self.input_layer)
-        prediction = self.aimer.predict(self.input_layer)
+        self.weapon_type = self.selector.predict(self.input_layer)[0]
+        prediction = self.aimer.predict(self.input_layer)[0]
 
         self.angle = 2 * pi * prediction / 16
 
