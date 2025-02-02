@@ -89,12 +89,17 @@ class Engine:
         self.current_cooldown = 0
 
         #waves
-        self.cycles : list[Cycle] = [Cycle([Enemy(0,0,30,100,100,10)]*3),Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=float("inf"))]
+        self.cycles : list[Cycle] = [
+            Cycle([Enemy(0,0,30,float("inf"),0,0)]*5,repeats=float("inf")),
+            Cycle([Enemy(0,0,30,100,100,10)]*3),
+            Cycle([Enemy(0,0,30,100,200,10)]*5,repeats=float("inf"))
+        ]
+
         self.cyclenum = 0
 
         #input layer
-        self.input_size = 600
-        self.input_resolution = 20
+        self.input_size = 1000
+        self.input_resolution = 28
         self.input_layer : np.ndarray = np.zeros(self.input_resolution ** 2)
         self.input_surface : pygame.Surface = pygame.surface.Surface((self.input_size,self.input_size))
 
@@ -196,9 +201,8 @@ class Engine:
         self.add_example(x,y)
 
     def train(self):
-        for _ in range(100):
-            self.selector.train()
-            self.aimer.train()
+        self.selector.train()
+        self.aimer.train()
     
     def run_prediction(self):
         self.update_input()
@@ -355,12 +359,12 @@ class Engine:
                     #self.add_example(mx, my)
                     self.auto_add_example()
 
-                    self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 600)]
+                    self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 1000)]
 
                     if self.cycles[self.cyclenum].repeats < 0:
                         self.cyclenum += 1
 
-                if keys[pygame.K_MINUS] or right:
+                if 1 or right:
                     self.train()
 
             elif self.tab == "activation":

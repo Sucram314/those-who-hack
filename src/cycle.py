@@ -1,5 +1,5 @@
 import random
-from math import sin,cos,pi
+from math import sin,cos,pi,sqrt
 from enemy import Enemy
 
 class Cycle:
@@ -13,7 +13,7 @@ class Cycle:
     def spawn(self, x, y, min_spawn_distance=900, max_spawn_distance=1100):
         for enemy in self.enemies:
             angle = random.uniform(0, 2*pi)
-            dist = random.uniform(min_spawn_distance,max_spawn_distance)
+            dist = sqrt(random.uniform(0,1)) * (max_spawn_distance - min_spawn_distance) + min_spawn_distance
 
             ex = x + dist * cos(angle)
             ey = y + dist * sin(angle)
