@@ -36,7 +36,7 @@ class Player:
     def update(self, dt, xinput, yinput):
         self.move(dt, xinput, yinput)
 
-    def draw(self, screen : pygame.Surface, camera : Camera):
+    def draw(self, screen : pygame.Surface, camera : Camera, is_game_over=False):
         screen_x, screen_y = camera.to_screen(self.x, self.y)
 
-        pygame.draw.aacircle(screen, (255,255,255), (screen_x,screen_y), self.radius)
+        pygame.draw.aacircle(screen, (127,127,127) if is_game_over else (255,255,255), (screen_x,screen_y), self.radius)

@@ -77,12 +77,14 @@ class UI:
         self.visualizer_label = Asset(self.font[36].render("Visualizer",0,(255,255,255)), 0, -360)
         self.trainer_label = Asset(self.font[36].render("Trainer",0,(255,255,255)), 0, -360)
 
+        self.game_over = Asset(self.font[36].render("Game Over!",0,(255,255,255)), 0, -360)
+
     def load_to_scale(self, relative_path, w, h):
         return pygame.transform.scale(pygame.image.load(f"{self.directory}\\{relative_path}"),(w,h))
 
 NORMAL_ZOMBIE = Enemy(0,0,30,100,150,10,10,(0,200,0))
 FAST_ZOMBIE = Enemy(0,0,20,100,200,10,15,(0,255,0))
-BIG_ZOMBIE = Enemy(0,0,40,200,100,20,15,(0,255,0))
+BIG_ZOMBIE = Enemy(0,0,40,200,100,20,15,(0,127,0))
 
 class Engine:
     def __init__(self,screen,fps,directory):
@@ -126,6 +128,8 @@ class Engine:
 
         self.cyclenum = 0
         self.currepeat = 0
+
+        self.is_game_over = False
 
         #input layer
         self.input_size = 800
@@ -182,8 +186,10 @@ class Engine:
 
         self.prediction_cooldown = 0
 
+        self.is_game_over = False
+
     def game_over(self):
-        pass
+        self.is_game_over = True
 
     def update_input(self):
         self.input_surface.fill((0,0,0))
@@ -281,7 +287,7 @@ class Engine:
                 self.UI.shopping_cart.upscale = 1
 
         elif self.scene == "game":
-            self.player.update(dt,xinput,yinput)
+            if not self.is_game_over: self.player.update(dt,xinput,yinput)
             self.camera.follow(self.player.x, self.player.y)
 
             stuff = self.cycles[self.cyclenum].update(dt, self.player.x, self.player.y)
@@ -299,7 +305,7 @@ class Engine:
 
             self.current_cooldown -= dt
 
-            if keys[pygame.K_SPACE] and self.current_cooldown <= 0:
+            if not self.is_game_over and keys[pygame.K_SPACE] and self.current_cooldown <= 0:
                 cur_weapon = self.weapons[self.weapon_type]
                 self.current_cooldown = cur_weapon.reload
                 self.bullets.append(cur_weapon.shoot(self.player.x, self.player.y, self.angle))
@@ -455,7 +461,13 @@ class Engine:
             for bullet in self.bullets: 
                 bullet.draw(self.screen, self.camera)
 
-            self.player.draw(self.screen, self.camera)
+            self.player.draw(self.screen, self.camera, self.is_game_over)
+
+            pygame.draw.rect(self.screen,(255,0,0), (20,self.height-45,200,25))
+            pygame.draw.rect(self.screen,(0,255,0), (20,self.height-45,200*self.player.health//self.player.full_health,25))
+
+            if self.is_game_over:
+                self.UI.game_over.draw(self.screen, self.width, self.height)
 
         elif self.scene == "shop":
             if self.tokens > 0:
@@ -484,8 +496,6 @@ class Engine:
                 self.screen.blit(examples_text, (10, self.height-h-10))
 
             elif self.tab == "visual":
-
-                #code by henry tian
                 b1, b2, b3 = self.aimer.biases
                 W1, W2, W3 = self.aimer.weights
                 w = self.width
