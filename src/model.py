@@ -135,7 +135,7 @@ class Model:
 
         print()
 
-    def train(self, alpha=0.1):
+    def train(self, alpha=0.05):
         layers, activated = self.forward_propagate(self.data.input)
         dweights, dbiases = self.backward_propagate(layers, activated, self.data.output)
         self.update_parameters(dweights, dbiases, alpha)

@@ -98,8 +98,8 @@ class Engine:
         self.cyclenum = 0
 
         #input layer
-        self.input_size = 1000
-        self.input_resolution = 28
+        self.input_size = 800
+        self.input_resolution = 20
         self.input_layer : np.ndarray = np.zeros(self.input_resolution ** 2)
         self.input_surface : pygame.Surface = pygame.surface.Surface((self.input_size,self.input_size))
 
