@@ -65,7 +65,7 @@ class Model:
             cur = self.layers[i]
 
             self.weights.append(np.random.randn(cur,pre))
-            self.biases.append(np.random.randn(cur,1)) 
+            self.biases.append(np.zeros((cur,1)))
 
         self.iteration = 0           
 

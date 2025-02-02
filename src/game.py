@@ -350,6 +350,8 @@ class Engine:
             if self.prediction_cooldown <= 0:
                 self.prediction_cooldown = self.prediction_interval
                 self.run_prediction()
+
+            self.screen.blit(self.input_surface,((self.width - self.input_size)/2, (self.height - self.input_size)/2))
         
         elif self.scene == "shop":
             if self.tab == "epoch":
@@ -359,7 +361,7 @@ class Engine:
                     #self.add_example(mx, my)
                     self.auto_add_example()
 
-                    self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 1000)]
+                    self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 800)]
 
                     if self.cycles[self.cyclenum].repeats < 0:
                         self.cyclenum += 1

@@ -41,7 +41,7 @@ class Enemy:
 
     def input(self, x, y, input_size, input_surface):
         dx = (self.x - x) + input_size / 2
-        dy = (self.y - y) + input_size / 2
+        dy = (y - self.y) + input_size / 2
 
         pygame.draw.circle(input_surface, (255,255,255), (dx,dy), self.radius)
         
