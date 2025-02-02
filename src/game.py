@@ -4,7 +4,7 @@ import numpy as np
 import pickle as pk
 from math import hypot, pi, sin, cos
 
-from model import Data, Selector, Aimer
+from model import Data, Aimer
 from player import Player
 from camera import Camera
 from bullet import Bullet
@@ -60,6 +60,23 @@ class UI:
         self.play_button =  Button(self.load_to_scale("textures\\play.png", 300, 300), -200, 100)
         self.upgrade = Button(self.load_to_scale("textures\\upgrade.png", 600, 600), 0, 0)
 
+        self.input_layer_label = Asset(self.font[24].render("Input Layer",0,(255,255,255)), -375, -360 + 50)
+        self.hidden_layer1_label = Asset(self.font[24].render("Hidden Layer 1",0,(255,255,255)), -125, -340 + 50)
+        self.hidden_layer2_label = Asset(self.font[24].render("Hidden Layer 2",0,(255,255,255)), 125, -230 + 50)
+        self.output_layer_label = Asset(self.font[24].render("Output Layer",0,(255,255,255)), 375, -190 + 50)
+
+        self.weights1_label = Asset(self.font[16].render("Weights 1",0,(255,255,255)), -250, 350 + 50)
+        self.weights2_label = Asset(self.font[16].render("Weights 2",0,(255,255,255)), 0, 285 + 50)
+        self.weights3_label = Asset(self.font[16].render("Weights 3",0,(255,255,255)), 250, 210 + 50)
+
+        self.bias1_label = Asset(self.font[16].render("Bias 1",0,(255,255,255)), -125, 340 + 50)
+        self.bias2_label = Asset(self.font[16].render("Bias 2",0,(255,255,255)), 125, 230 + 50)
+        self.bias3_label = Asset(self.font[16].render("Bias 3",0,(255,255,255)), 375, 190 + 50)
+
+        self.data_generator_label = Asset(self.font[36].render("Data Generator",0,(255,255,255)), 0, -360)
+        self.visualizer_label = Asset(self.font[36].render("Visualizer",0,(255,255,255)), 0, -360)
+        self.trainer_label = Asset(self.font[36].render("Trainer",0,(255,255,255)), 0, -360)
+
     def load_to_scale(self, relative_path, w, h):
         return pygame.transform.scale(pygame.image.load(f"{self.directory}\\{relative_path}"),(w,h))
 
@@ -108,26 +125,28 @@ class Engine:
         ]
 
         self.cyclenum = 0
+        self.currepeat = 0
 
         #input layer
         self.input_size = 800
         self.input_resolution = 20
-        self.input_layer : np.ndarray = np.zeros(self.input_resolution ** 2)
+        self.input_layer : np.ndarray = np.zeros((self.input_resolution ** 2, 1))
         self.input_surface : pygame.Surface = pygame.surface.Surface((self.input_size,self.input_size))
+        self.downscaled = pygame.surface.Surface((self.input_resolution,self.input_resolution))
 
         self.prediction_cooldown = 0
         self.prediction_interval = 0.5
 
         #models
-        self.selector : Selector = Selector(Data(), self.input_resolution)
+        #self.selector : Selector = Selector(Data(), self.input_resolution)
         self.aimer : Aimer = Aimer(Data(), self.input_resolution)
 
     def save(self):
         with open(f"{self.directory}\\data\\playerdata.pk","wb") as f:
             pk.dump((self.coins,self.tokens), f)
 
-        with open(f"{self.directory}\\data\\selector.pk","wb") as f:
-            pk.dump(self.selector, f)
+        # with open(f"{self.directory}\\data\\selector.pk","wb") as f:
+        #     pk.dump(self.selector, f)
 
         with open(f"{self.directory}\\data\\aimer.pk","wb") as f:
             pk.dump(self.aimer, f)
@@ -137,8 +156,8 @@ class Engine:
             with open(f"{self.directory}\\data\\playerdata.pk","rb") as f:
                 self.coins, self.tokens = pk.load(f)
 
-            with open(f"{self.directory}\\data\\selector.pk","rb") as f:
-                self.selector = pk.load(f)
+            # with open(f"{self.directory}\\data\\selector.pk","rb") as f:
+            #     self.selector = pk.load(f)
 
             with open(f"{self.directory}\\data\\aimer.pk","rb") as f:
                 self.aimer = pk.load(f)
@@ -159,6 +178,7 @@ class Engine:
         self.current_cooldown = 0
 
         self.cyclenum = 0
+        self.currepeat = 0
 
         self.prediction_cooldown = 0
 
@@ -171,15 +191,13 @@ class Engine:
         for enemy in self.enemies:
             enemy.input(self.player.x, self.player.y, self.input_size, self.input_surface)
 
-        downscaled = pygame.transform.smoothscale(self.input_surface, (self.input_resolution, self.input_resolution))
-        self.input_layer = np.reshape(pygame.surfarray.array2d(downscaled),(self.input_resolution**2,1)) / 0xffffff
+        self.downscaled = pygame.transform.smoothscale(self.input_surface, (self.input_resolution, self.input_resolution))
+        self.input_layer = np.reshape(pygame.surfarray.array2d(self.downscaled),(self.input_resolution**2,1)) / 0xffffff
 
     def add_example(self, x, y):
-        self.update_input()
-
-        one_hot = np.zeros((len(self.weapons),1))
-        one_hot[self.weapon_type,0] = 1
-        self.selector.data.add_example(self.input_layer, one_hot, self.weapon_type)
+        # one_hot = np.zeros((len(self.weapons),1))
+        # one_hot[self.weapon_type,0] = 1
+        # self.selector.data.add_example(self.input_layer, one_hot, self.weapon_type)
 
         magnitude = hypot(x, y)
         x /= magnitude
@@ -219,13 +237,13 @@ class Engine:
         self.add_example(x,y)
 
     def train(self):
-        self.selector.train()
+        #self.selector.train()
         self.aimer.train()
     
     def run_prediction(self):
         self.update_input()
 
-        self.weapon_type = self.selector.predict(self.input_layer)[0]
+        #self.weapon_type = self.selector.predict(self.input_layer)[0]
         prediction = self.aimer.predict(self.input_layer)[0]
 
         self.angle = 2 * pi * prediction / 16
@@ -266,12 +284,18 @@ class Engine:
             self.player.update(dt,xinput,yinput)
             self.camera.follow(self.player.x, self.player.y)
 
-            self.enemies.extend(self.cycles[self.cyclenum].update(dt, self.player.x, self.player.y))
+            stuff = self.cycles[self.cyclenum].update(dt, self.player.x, self.player.y)
 
-            if self.cycles[self.cyclenum].repeats < 0:
-                self.cyclenum += 1
-                if self.cyclenum == len(self.cycles):
-                    self.cyclenum -= 1
+            if stuff is not None:
+                self.currepeat += 1
+                self.enemies.extend(stuff)
+
+                if self.currepeat == self.cycles[self.cyclenum].repeats:
+                    self.cyclenum += 1
+                    if self.cyclenum == len(self.cycles):
+                        self.cyclenum -= 1
+
+                    self.currepeat = 0
 
             self.current_cooldown -= dt
 
@@ -378,10 +402,6 @@ class Engine:
             #self.screen.blit(self.input_surface,((self.width - self.input_size)/2, (self.height - self.input_size)/2))
         
         elif self.scene == "shop":
-            if self.tokens > 0:
-                self.train()
-                self.tokens -= 1
-                
             if self.tab == "epoch":
                 if curkeys[pygame.K_TAB]:
                     self.tab = "training"
@@ -399,17 +419,22 @@ class Engine:
                     self.auto_add_example()
 
                     self.enemies = [*self.cycles[self.cyclenum].spawn(self.player.x, self.player.y, 100, 800)]
+                    self.update_input()
 
-                    if self.cycles[self.cyclenum].repeats < 0:
+                    self.currepeat += 1
+
+                    if self.currepeat == self.cycles[self.cyclenum].repeats:
                         self.cyclenum += 1
                         if self.cyclenum == len(self.cycles):
                             self.cyclenum = 0
+
+                        self.currepeat = 0
 
                 if 1 or right:
                     self.train()
 
             elif self.tab == "visual":
-                if keys[pygame.K_TAB]:
+                if curkeys[pygame.K_TAB]:
                     self.tab = "epoch"
         
         return False
@@ -432,19 +457,31 @@ class Engine:
 
             self.player.draw(self.screen, self.camera)
 
-            coin_text = self.UI.font[32].render(f"Coins: {self.coins}",0,(255,255,255))
-            w, h = coin_text.get_size()
-            self.screen.blit(coin_text, (self.width-w - 50, self.height-h - 50))
-
         elif self.scene == "shop":
+            if self.tokens > 0:
+                self.train()
+                self.tokens -= 1
+
             if self.tab == "epoch":
-                pass
+                self.UI.upgrade.draw(self.screen, self.width, self.height)
+
+                self.UI.trainer_label.draw(self.screen, self.width, self.height)
 
             elif self.tab == "training":
                 for enemy in self.enemies:
                     enemy.draw(self.screen, self.camera)
 
+                self.screen.blit(pygame.transform.scale(self.downscaled, (self.input_size, self.input_size)), (self.width/2 - self.input_size/2, self.height/2 - self.input_size/2))
+                self.screen.fill((0,255,0),(self.width/2 - self.input_size/2, self.height/2 - self.input_size/2, self.input_size, self.input_size),special_flags=pygame.BLEND_MULT)
+                pygame.draw.rect(self.screen,(255,0,0),(self.width/2 - self.input_size/2, self.height/2 - self.input_size/2, self.input_size, self.input_size), 5)
+
                 self.player.draw(self.screen, self.camera)
+
+                self.UI.data_generator_label.draw(self.screen, self.width, self.height)
+
+                examples_text = self.UI.font[32].render(f"# of Examples: {self.aimer.data.output.shape[1]}",0,(255,255,255))
+                w, h = examples_text.get_size()
+                self.screen.blit(examples_text, (10, self.height-h-10))
 
             elif self.tab == "visual":
 
@@ -453,65 +490,96 @@ class Engine:
                 W1, W2, W3 = self.aimer.weights
                 w = self.width
                 h = self.height
+                const = -50
 
-                rad = 10
+                rad = 7
                 dist = 5
-                distbetweencols = 300
+                distbetweencols = 250
 
                 numvis = 16
                 distbetweenX = 50
 
                 for i in range(b1.shape[0]):
                     x = w/2-0.5*distbetweencols
-                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist) - const
                     for j in range(numvis):
                         x2 = w/2-1.5*distbetweencols
-                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist)
+                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist) - const
                         pygame.draw.aaline(self.screen, (255-255*sigmoid(W1[i,j]),0,255*sigmoid(W1[i,j])), (x,y), (x2,y2))
                     for j in range(numvis,2*numvis):
                         x2 = w/2-1.5*distbetweencols
-                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist)+distbetweenX
+                        y2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+j*(rad*2+dist)+distbetweenX - const
                         pygame.draw.aaline(self.screen, (255-255*sigmoid(W1[i,j]),0,255*sigmoid(W1[i,j])), (x,y), (x2,y2))
                 for i in range(b2.shape[0]):
                     x = w/2+0.5*distbetweencols
-                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist) - const
                     for j in range(len(W2[i])):
                         x2 = w/2-0.5*distbetweencols
-                        y2 = (h-((2*rad+dist)*b1.shape[0]-dist))/2+j*(rad*2+dist)
+                        y2 = (h-((2*rad+dist)*b1.shape[0]-dist))/2+j*(rad*2+dist) - const
                         pygame.draw.aaline(self.screen, (255-255*sigmoid(W2[i,j]),0,255*sigmoid(W2[i,j])), (x,y), (x2,y2))
                 for i in range(b3.shape[0]):
                     x = w/2+1.5*distbetweencols
-                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist) - const
                     for j in range(len(W3[i])):
                         x2 = w/2+0.5*distbetweencols
-                        y2 = (h-((2*rad+dist)*b2.shape[0]-dist))/2+j*(rad*2+dist)
+                        y2 = (h-((2*rad+dist)*b2.shape[0]-dist))/2+j*(rad*2+dist) - const
                         pygame.draw.aaline(self.screen, (255-255*sigmoid(W2[i,j]),0,255*sigmoid(W2[i,j])), (x,y), (x2,y2))
 
                 for i in range(numvis):
                     x = w/2-1.5*distbetweencols
-                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist) - const
                     pygame.draw.aacircle(self.screen, (255,255,255), (x,y), rad)
+
+                bruh = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+(numvis-1)*(rad*2+dist) - const
+                bruh2 = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+numvis*(rad*2+dist)+distbetweenX - const
+
+                for i in range(3):
+                    x = w/2-1.5*distbetweencols
+                    y = (bruh + bruh2) / 2 + (i - 1) * (rad + dist)
+                    pygame.draw.aacircle(self.screen, (255,255,255), (x,y), 2)
+
                 for i in range(numvis,numvis*2):
                     x = w/2-1.5*distbetweencols
-                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist)+distbetweenX
+                    y = (h-((2*rad+dist)*numvis*2-2*dist+distbetweenX))/2+i*(rad*2+dist)+distbetweenX - const
                     pygame.draw.aacircle(self.screen, (255,255,255), (x,y), rad)
+                    
                 for i in range(b1.shape[0]):
                     x = w/2-0.5*distbetweencols
-                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b1.shape[0]-dist))/2+i*(rad*2+dist) - const
                     pygame.draw.aacircle(self.screen, (255-255*sigmoid(b1[i,0]),0,255*sigmoid(b1[i,0])), (x, y), rad)
                 for i in range(b2.shape[0]):
                     x = w/2+0.5*distbetweencols
-                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b2.shape[0]-dist))/2+i*(rad*2+dist) - const
                     pygame.draw.aacircle(self.screen, (255-255*sigmoid(b2[i,0]),0,255*sigmoid(b2[i,0])), (x, y), rad)
                 for i in range(b3.shape[0]):
                     x = w/2+1.5*distbetweencols
-                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist)
+                    y = (h-((2*rad+dist)*b3.shape[0]-dist))/2+i*(rad*2+dist) - const
                     pygame.draw.aacircle(self.screen, (255-255*sigmoid(b3[i,0]),0,255*sigmoid(b3[i,0])), (x, y), rad)
 
-                accuracy_text = self.UI.font[32].render(f"Accuracy: {self.aimer.accuracy:.2%}",0,(255,255,255))
-                w, h = accuracy_text.get_size()
-                self.screen.blit(accuracy_text, (self.width-w - 50, self.height-h - 50))
+                self.UI.input_layer_label.draw(self.screen, self.width, self.height)
+                self.UI.hidden_layer1_label.draw(self.screen, self.width, self.height)
+                self.UI.hidden_layer2_label.draw(self.screen, self.width, self.height)
+                self.UI.output_layer_label.draw(self.screen, self.width, self.height)
 
-                iteration_text = self.UI.font[32].render(f"Iteration: {self.aimer.iteration}",0,(255,255,255))
-                w2, h2 = iteration_text.get_size()
-                self.screen.blit(iteration_text, (self.width-w2 - 50, self.height-h-h2 - 50))
+                self.UI.weights1_label.draw(self.screen, self.width, self.height)
+                self.UI.weights2_label.draw(self.screen, self.width, self.height)
+                self.UI.weights3_label.draw(self.screen, self.width, self.height)
+
+                self.UI.bias1_label.draw(self.screen, self.width, self.height)
+                self.UI.bias2_label.draw(self.screen, self.width, self.height)
+                self.UI.bias3_label.draw(self.screen, self.width, self.height)
+
+                self.UI.visualizer_label.draw(self.screen, self.width, self.height)
+
+        if self.scene != "menu":
+            coin_text = self.UI.font[32].render(f"Coins: {self.coins}",0,(255,255,255))
+            w, h = coin_text.get_size()
+            self.screen.blit(coin_text, (self.width-w - 10, 10))
+
+            accuracy_text = self.UI.font[32].render(f"Accuracy: {self.aimer.accuracy:.2%}",0,(255,255,255))
+            w, h = accuracy_text.get_size()
+            self.screen.blit(accuracy_text, (self.width-w - 10, self.height-h-10))
+
+            iteration_text = self.UI.font[32].render(f"Epoch: {self.aimer.iteration}",0,(255,255,255))
+            w2, h2 = iteration_text.get_size()
+            self.screen.blit(iteration_text, (self.width-w2 - 10, self.height-h-h2-10))

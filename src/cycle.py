@@ -20,8 +20,6 @@ class Cycle:
 
             yield enemy.instantiate(ex,ey)
 
-        self.repeats -= 1
-
     def update(self,dt,x,y):
         self.delta_time += dt
 
@@ -29,4 +27,4 @@ class Cycle:
             self.delta_time -= self.interval
             return self.spawn(x,y)
         
-        return []
+        return None

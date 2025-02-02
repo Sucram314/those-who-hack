@@ -148,6 +148,6 @@ class Aimer(Model):
     def __init__(self,data,resolution):
         super().__init__(data,np.array([resolution**2, 32, 20, 16]))
 
-class Selector(Model):
-    def __init__(self,data,resolution):
-        super().__init__(data,np.array([resolution**2, 16, 10, 2]))
+# class Selector(Model):
+#     def __init__(self,data,resolution):
+#         super().__init__(data,np.array([resolution**2, 16, 10, 2]))
