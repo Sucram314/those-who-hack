@@ -16,3 +16,5 @@ img.show()
 
 out = obj.data.output.T[num]
 print(list(out))
+
+print(obj.data.labels[num])

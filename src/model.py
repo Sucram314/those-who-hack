@@ -16,11 +16,12 @@ def softmax(x : np.ndarray) -> np.ndarray:
     return exp / np.sum(exp, 0)
 
 class Data:
-    def __init__(self, input : np.ndarray = None, output : np.ndarray = None):
+    def __init__(self, input : np.ndarray = None, output : np.ndarray = None, labels : np.ndarray = None):
         self.input = input
         self.output = output
+        self.labels = labels
 
-    def add_example(self, input : np.ndarray, output : np.ndarray):
+    def add_example(self, input : np.ndarray, output : np.ndarray, label : np.ndarray):
         if self.input is None: 
             self.input = input
         else:
@@ -30,6 +31,11 @@ class Data:
             self.output = output
         else:
             self.output = np.append(self.output.T, output.T, axis=0).T
+
+        if self.labels is None:
+            self.labels = np.array([label])
+        else:
+            self.labels = np.append(self.labels,[label])
 
         if self.input.shape[1] % 10 == 0:
             print(self.input.shape[1], "examples")
@@ -83,7 +89,7 @@ class Model:
         return layers, activated
     
     def backward_propagate(self, layers : list[np.ndarray], activated : list[np.ndarray], target : np.ndarray) -> tuple[list[np.ndarray],list[np.ndarray]]:
-        num_examples = target.size
+        num_examples = target.shape[1]
 
         dweights = []
         dbiases = []
@@ -117,13 +123,14 @@ class Model:
             else:
                 current = self.activation(current)
 
-        return current
+        return np.argmax(current,0)
     
     def evaluate(self):
         print(f"Iteration {self.iteration}")
 
         predictions = self.predict(self.data.input)
-        self.accuracy = np.sum(predictions == self.data.output) / self.data.output.shape[1]
+        self.accuracy = np.sum(predictions == self.data.labels) / self.data.labels.size
+        
         print(f"Accuracy: {self.accuracy:%}")
 
         print()

@@ -156,7 +156,7 @@ class Engine:
 
         one_hot = np.zeros((len(self.weapons),1))
         one_hot[self.weapon_type,0] = 1
-        self.selector.data.add_example(self.input_layer, one_hot)
+        self.selector.data.add_example(self.input_layer, one_hot, self.weapon_type)
 
         magnitude = hypot(x, y)
         x /= magnitude
@@ -178,7 +178,7 @@ class Engine:
 
         one_hot[best,0] = 1
 
-        self.aimer.data.add_example(self.input_layer, one_hot)
+        self.aimer.data.add_example(self.input_layer, one_hot, best)
 
     def auto_add_example(self):
         x = 1
@@ -203,8 +203,8 @@ class Engine:
     def run_prediction(self):
         self.update_input()
 
-        self.weapon_type = np.argmax(self.selector.predict(self.input_layer))
-        prediction = np.argmax(self.aimer.predict(self.input_layer))
+        self.weapon_type = self.selector.predict(self.input_layer)
+        prediction = self.aimer.predict(self.input_layer)
 
         self.angle = 2 * pi * prediction / 16
 
